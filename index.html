@@ -41,6 +41,7 @@
     .group-btn{padding:0.5rem 1rem;border-radius:9999px;border:1px solid #fecdd3;background:#fff1f2;color:#9f1239;font-weight:600;transition:all .2s}
     .group-btn:hover{background:#ffe4e6;border-color:#fda4af}
     .group-btn.active{background:linear-gradient(135deg,#ec4899 0%,#f9a8d4 100%);color:#fff;border-color:#ec4899}
+    .assign-tab-btn.active{border-bottom-color:#ec4899!important;color:#ec4899;font-weight:600}
   </style>
 </head>
 <body class="bg-muted min-h-screen text-gray-800" style="font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'">
@@ -56,7 +57,9 @@
 
   <main class="w-full p-4 md:p-6">
     <div class="mb-4 flex items-center gap-2 flex-wrap">
-      <button class="px-3 py-1 rounded-full border border-rose-200 bg-rose-50/30 text-primary-blue hover:bg-rose-50 tab-btn" data-target="form-approve">Duyệt báo cáo</button>
+      <button class="px-3 py-1 rounded-full border border-rose-200 bg-rose-50/30 text-primary-blue hover:bg-rose-50 tab-btn active" data-target="form-approve">Duyệt báo cáo</button>
+      <button class="px-3 py-1 rounded-full border border-rose-200 bg-rose-50/30 text-primary-blue hover:bg-rose-50 tab-btn" data-target="form-assign">Phân công</button>
+      <button class="px-3 py-1 rounded-full border border-rose-200 bg-rose-50/30 text-primary-blue hover:bg-rose-50 tab-btn" data-target="form-statistics">Thống kê</button>
     </div>
 
     <section id="form-approve" class="bg-white p-4 md:p-6 rounded-xl shadow-md">
@@ -65,7 +68,6 @@
         <div class="flex items-center gap-2 text-xs text-gray-500">
           <label for="secret-code" class="hidden md:block">Mã bảo mật</label>
           <input id="secret-code" type="password" placeholder="Mã bảo mật" autocomplete="off" class="border border-rose-200 rounded bg-white text-xs px-2 py-1" style="min-width:160px" />
-          <button id="btn-debug" class="px-2 py-0.5 rounded border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100">Debug</button>
         </div>
       </div>
 
@@ -117,26 +119,6 @@
         </div>
       </div>
 
-      <div id="debug-panel" class="mt-2 p-2 border border-amber-300 rounded bg-amber-50 text-xs" style="display:none">
-        <div class="flex items-center justify-between mb-1">
-          <div class="font-semibold">Debug API</div>
-          <div class="flex items-center gap-2">
-            <button id="dbg-load-json" class="px-2 py-0.5 rounded border border-blue-300 bg-white hover:bg-blue-50 text-blue-700">Nạp JSON thủ công</button>
-          </div>
-        </div>
-        <div class="mb-1">URL: <span id="dbg-url" class="break-all"></span></div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div>
-            <div class="text-gray-600 mb-1">Response (raw)</div>
-            <textarea id="dbg-raw" class="w-full h-40 border rounded p-1"></textarea>
-          </div>
-          <div>
-            <div class="text-gray-600 mb-1">First row (normalized)</div>
-            <textarea id="dbg-row" class="w-full h-40 border rounded p-1"></textarea>
-          </div>
-        </div>
-      </div>
-
       <div class="mt-2 overflow-auto border border-rose-100 rounded-lg bg-rose-50/30">
         <table class="min-w-[1100px] w-full text-sm table-zebra table-vdiv">
           <thead class="bg-gradient-to-r from-rose-100 to-rose-50 sticky top-0">
@@ -171,6 +153,168 @@
           </select>
           <button id="prev" class="px-3 py-1 rounded-lg border border-rose-200 text-rose-700 bg-white hover:bg-rose-50">Trước</button>
           <button id="next" class="px-3 py-1 rounded-lg text-white font-semibold bg-primary-blue hover:brightness-105">Sau</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section Phân công -->
+    <section id="form-assign" class="bg-white p-4 md:p-6 rounded-xl shadow-md" style="display:none">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold text-rose-800">Phân công tác vụ</h2>
+        <button id="btn-reload-assign" class="px-3 py-1 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm">
+          🔄 Làm mới
+        </button>
+      </div>
+
+      <!-- Tab phân loại -->
+      <div class="mb-4 flex items-center gap-3 flex-wrap border-b border-rose-100">
+        <button id="btn-assign-tab-unassigned" class="px-4 py-2 rounded-t-lg border-b-2 border-transparent hover:bg-rose-50 assign-tab-btn active" data-tab="unassigned">
+          Chưa phân công <span id="count-unassigned" class="ml-2 px-2 py-0.5 rounded-full bg-rose-200 text-rose-800 text-xs font-semibold">0</span>
+        </button>
+        <button id="btn-assign-tab-assigned" class="px-4 py-2 rounded-t-lg border-b-2 border-transparent hover:bg-rose-50 assign-tab-btn" data-tab="assigned">
+          Đã phân công <span id="count-assigned" class="ml-2 px-2 py-0.5 rounded-full bg-green-200 text-green-800 text-xs font-semibold">0</span>
+        </button>
+      </div>
+
+      <!-- Bộ lọc -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+        <div class="md:col-span-2">
+          <label class="block text-sm text-gray-700 mb-1">Từ khóa</label>
+          <input id="assign-flt-q" type="text" placeholder="Mã/tiêu đề/người yêu cầu" class="w-full border border-rose-300 rounded-lg bg-rose-50 p-2 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:bg-white" />
+        </div>
+        <div>
+          <label class="block text-sm text-gray-700 mb-1">Từ ngày</label>
+          <input id="assign-flt-from" type="date" class="w-full border border-rose-300 rounded-lg bg-rose-50 p-2 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:bg-white" />
+        </div>
+        <div>
+          <label class="block text-sm text-gray-700 mb-1">Đến ngày</label>
+          <input id="assign-flt-to" type="date" class="w-full border border-rose-300 rounded-lg bg-rose-50 p-2 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:bg-white" />
+        </div>
+      </div>
+
+      <!-- Bảng danh sách -->
+      <div class="mt-2 overflow-auto border border-rose-100 rounded-lg bg-rose-50/30">
+        <table class="min-w-[1200px] w-full text-sm table-zebra table-vdiv">
+          <thead class="bg-gradient-to-r from-rose-100 to-rose-50 sticky top-0">
+            <tr class="text-left text-gray-700">
+              <th class="px-3 py-2 min-w-[120px]">Mã tác vụ</th>
+              <th class="px-3 py-2 min-w-[280px]">Tên tác vụ</th>
+              <th class="px-3 py-2 min-w-[160px]">Người yêu cầu</th>
+              <th class="px-3 py-2 min-w-[140px]">Ngày yêu cầu</th>
+              <th class="px-3 py-2 min-w-[140px]">Hạn mong muốn</th>
+              <th class="px-3 py-2 min-w-[160px]">Người thực hiện</th>
+              <th class="px-3 py-2 min-w-[140px]">Trạng thái</th>
+              <th class="px-3 py-2 min-w-[200px]">Hành động</th>
+            </tr>
+          </thead>
+          <tbody id="assign-list-body" class="divide-y divide-gray-100">
+            <tr><td class="px-3 py-3 text-center text-gray-500" colspan="8">Đang tải dữ liệu...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="assign-pager" class="mt-2 flex items-center justify-between" style="display:none">
+        <div class="text-sm text-gray-600">
+          <span id="assign-page-info">Trang 1/1 (0 dòng)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-gray-600">Hiển thị</label>
+          <select id="assign-page-size" class="border border-rose-300 rounded-lg bg-rose-50 p-1 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:bg-white">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+          <button id="assign-prev" class="px-3 py-1 rounded-lg border border-rose-200 text-rose-700 bg-white hover:bg-rose-50">Trước</button>
+          <button id="assign-next" class="px-3 py-1 rounded-lg text-white font-semibold bg-primary-blue hover:brightness-105">Sau</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section Thống kê -->
+    <section id="form-statistics" class="bg-white p-4 md:p-6 rounded-xl shadow-md" style="display:none">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold text-rose-800">Thống kê báo cáo</h2>
+        <button id="btn-refresh-stats" class="px-3 py-1 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm">
+          🔄 Làm mới
+        </button>
+      </div>
+
+      <!-- Bộ lọc thống kê -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+        <div>
+          <label class="block text-sm text-gray-700 mb-1">Từ ngày</label>
+          <input id="stats-from" type="date" class="w-full border border-rose-300 rounded-lg bg-rose-50 p-2 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:bg-white" />
+        </div>
+        <div>
+          <label class="block text-sm text-gray-700 mb-1">Đến ngày</label>
+          <input id="stats-to" type="date" class="w-full border border-rose-300 rounded-lg bg-rose-50 p-2 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:bg-white" />
+        </div>
+        <div>
+          <label class="block text-sm text-gray-700 mb-1">Nhóm</label>
+          <select id="stats-group" class="w-full border border-rose-300 rounded-lg bg-rose-50 p-2 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:bg-white">
+            <option value="all">Tất cả</option>
+            <option value="nctn2">Phòng NCTN 2</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="btn-apply-stats" class="submit-btn px-4 py-2 text-white font-semibold w-full">Áp dụng</button>
+        </div>
+      </div>
+
+      <!-- Thẻ thống kê tổng quan -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-gradient-to-br from-rose-50 to-rose-100 p-4 rounded-lg border border-rose-200">
+          <div class="text-sm text-rose-700 font-medium mb-1">Tổng số báo cáo</div>
+          <div class="text-2xl font-bold text-rose-800" id="stat-total">0</div>
+        </div>
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+          <div class="text-sm text-blue-700 font-medium mb-1">Chờ duyệt</div>
+          <div class="text-2xl font-bold text-blue-800" id="stat-pending">0</div>
+        </div>
+        <div class="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+          <div class="text-sm text-green-700 font-medium mb-1">Đã duyệt</div>
+          <div class="text-2xl font-bold text-green-800" id="stat-approved">0</div>
+        </div>
+        <div class="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-lg border border-amber-200">
+          <div class="text-sm text-amber-700 font-medium mb-1">Đang sửa</div>
+          <div class="text-2xl font-bold text-amber-800" id="stat-changes">0</div>
+        </div>
+      </div>
+
+      <!-- Biểu đồ và bảng thống kê -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Biểu đồ trạng thái -->
+        <div class="bg-rose-50/30 p-4 rounded-lg border border-rose-100">
+          <h3 class="text-lg font-semibold text-rose-800 mb-4">Phân bố trạng thái</h3>
+          <canvas id="chart-status" style="max-height:300px"></canvas>
+        </div>
+
+        <!-- Biểu đồ theo người lập -->
+        <div class="bg-rose-50/30 p-4 rounded-lg border border-rose-100">
+          <h3 class="text-lg font-semibold text-rose-800 mb-4">Số lượng theo người lập</h3>
+          <canvas id="chart-reporter" style="max-height:300px"></canvas>
+        </div>
+      </div>
+
+      <!-- Bảng thống kê chi tiết -->
+      <div class="bg-rose-50/30 p-4 rounded-lg border border-rose-100">
+        <h3 class="text-lg font-semibold text-rose-800 mb-4">Thống kê theo người lập</h3>
+        <div class="overflow-auto">
+          <table class="min-w-full w-full text-sm table-zebra">
+            <thead class="bg-gradient-to-r from-rose-100 to-rose-50">
+              <tr class="text-left text-gray-700">
+                <th class="px-3 py-2">Người lập</th>
+                <th class="px-3 py-2 text-center">Tổng số</th>
+                <th class="px-3 py-2 text-center">Chờ duyệt</th>
+                <th class="px-3 py-2 text-center">Đã duyệt</th>
+                <th class="px-3 py-2 text-center">Đang sửa</th>
+                <th class="px-3 py-2 text-center">Từ chối</th>
+              </tr>
+            </thead>
+            <tbody id="stats-table-body" class="divide-y divide-gray-100">
+              <tr><td class="px-3 py-3 text-center text-gray-500" colspan="6">Chưa có dữ liệu</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -221,6 +365,39 @@
     </div>
   </div>
 
+  <!-- Modal Assign -->
+  <div id="modal-assign" class="modal" aria-hidden="true">
+    <div class="w-full max-w-md bg-white rounded-xl shadow-lg p-4">
+      <h3 id="assign-modal-title" class="text-lg font-semibold text-rose-800 mb-1">Phân công tác vụ</h3>
+      <div class="mb-3">
+        <label class="block text-sm text-gray-700 mb-1">Mã tác vụ</label>
+        <input id="assign-task-code" type="text" readonly class="w-full border border-rose-300 rounded-lg bg-gray-50 p-2 text-gray-600" />
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm text-gray-700 mb-1">Tên tác vụ</label>
+        <input id="assign-task-title" type="text" readonly class="w-full border border-rose-300 rounded-lg bg-gray-50 p-2 text-gray-600" />
+      </div>
+      <div class="mb-3" id="assign-current-person-container" style="display:none">
+        <label class="block text-sm text-gray-700 mb-1">Người thực hiện hiện tại</label>
+        <input id="assign-current-person" type="text" readonly class="w-full border border-rose-300 rounded-lg bg-amber-50 p-2 text-amber-700 font-medium" />
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm text-gray-700 mb-1">Người thực hiện <span class="text-red-500">*</span></label>
+        <select id="assign-person" class="w-full border border-rose-300 rounded-lg bg-rose-50 p-2 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:bg-white">
+          <option value="">-- Chọn người thực hiện --</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm text-gray-700 mb-1">Ghi chú (không bắt buộc)</label>
+        <textarea id="assign-note" rows="3" class="w-full border border-rose-300 rounded-lg bg-rose-50 p-2 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:bg-white" placeholder="Ghi chú phân công..."></textarea>
+      </div>
+      <div class="mt-3 flex items-center justify-end gap-2">
+        <button data-close="modal-assign" class="px-3 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50">Hủy</button>
+        <button id="assign-do" class="submit-btn px-4 py-2 text-white font-semibold">Xác nhận</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Report Preview -->
   <div id="modal-report" class="modal" aria-hidden="true">
     <div class="w-full max-w-5xl bg-white rounded-xl shadow-lg p-0 overflow-hidden">
@@ -257,8 +434,9 @@
     // ===== Config
     const WEBHOOK_TEST = 'https://xcqiyibqs.tino.page/webhook/tracuutacvuNCTN2';
     const WEBHOOK_PROD = WEBHOOK_TEST.replace('/webhook-test/','/webhook/');
-    const REPORTS_QUERY_URL = 'https://xcqiyibqs.tino.page/webhook/TracuuTNNCTN2';
-    const FORM_ACTION_URL = 'https://xcqiyibqs.tino.page/webhook/TNPD-NCTN2';
+    const REPORTS_QUERY_URL = 'https://xcqiyibqs.tino.page/webhook/TracuutruongnhomDBmoi';
+    const FORM_ACTION_URL = 'https://xcqiyibqs.tino.page/webhook/duyebaocaotruongnhomdbmoi';
+    const ASSIGN_QUERY_URL = 'https://xcqiyibqs.tino.page/webhook/LaydulieuphancongNCTN2';
 
     // ===== Group Definitions (NCTN 2)
     const NHOM_NCTN2 = [
@@ -280,6 +458,15 @@
     let CURRENT_ITEM_ID = null;
     let CURRENT_ACTION = null;
     let SELECTED_GROUP = 'all'; // 'all' | 'nctn2'
+
+    // ===== Assign State
+    let ALL_ASSIGN_ITEMS = [];
+    let ASSIGN_FILTERED = [];
+    let ASSIGN_CURRENT_PAGE = 1;
+    let ASSIGN_PAGE_SIZE = 20;
+    let ASSIGN_CURRENT_TAB = 'unassigned'; // 'unassigned' | 'assigned'
+    let ASSIGN_CURRENT_ITEM = null;
+    let ASSIGN_IS_CHANGE_MODE = false; // false = phân công mới, true = thay đổi người thực hiện
 
     // ===== Helpers
     function normalizeVietnamese(str){
@@ -313,7 +500,20 @@
     }
 
     function openModal(id){ const m=document.getElementById(id); if(m){ m.classList.add('open'); m.setAttribute('aria-hidden','false'); } }
-    function closeModal(id){ const m=document.getElementById(id); if(m){ m.classList.remove('open'); m.setAttribute('aria-hidden','true'); } }
+    function closeModal(id){ 
+      const m=document.getElementById(id); 
+      if(m){ 
+        m.classList.remove('open'); 
+        m.setAttribute('aria-hidden','true');
+        // Reset modal assign khi đóng
+        if (id === 'modal-assign') {
+          ASSIGN_IS_CHANGE_MODE = false;
+          ASSIGN_CURRENT_ITEM = null;
+          const currentPersonContainer = document.getElementById('assign-current-person-container');
+          if (currentPersonContainer) currentPersonContainer.style.display = 'none';
+        }
+      } 
+    }
 
     function parseDateFlexible(s){
       try{
@@ -328,21 +528,34 @@
     function fmtDmy(s){ const d=parseDateFlexible(s); if(!d) return ''; const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yy=d.getFullYear(); return `${dd}/${mm}/${yy}`; }
     function nowIsoMinute(){ const d=new Date(); const yy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${yy}-${mm}-${dd} ${hh}:${mi}`; }
     function nowViMinute(){ const d=new Date(); const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); const yy=d.getFullYear(); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${dd}/${mm}/${yy} ${hh}:${mi}`; }
-    function appendRowParams(p, it){
+    function appendRowParams(p, it, overrides){
       try{
-        const row = it || {};
-        p.append('header_code','Mã báo cáo'); p.append('field_code','code'); p.append('code', String(row.code||''));
-        p.append('header_title','Tiêu đề'); p.append('field_title','title'); p.append('title', String(row.title||''));
-        p.append('header_reporter','Người lập'); p.append('field_reporter','reporter'); p.append('reporter', String(row.reporter||''));
-        p.append('header_reporterEmail','Email'); p.append('field_reporterEmail','reporterEmail'); p.append('reporterEmail', String(row.reporterEmail||''));
-        p.append('header_submitDate','Ngày nộp'); p.append('field_submitDate','submitDate'); p.append('submitDate', String(row.submitDate||''));
-        p.append('header_wishDate','Hạn mong muốn'); p.append('field_wishDate','wishDate'); p.append('wishDate', String(row.wishDate||''));
-        p.append('header_dueDate','Hạn đánh giá'); p.append('field_dueDate','dueDate'); p.append('dueDate', String(row.dueDate||''));
-        p.append('header_status','Trạng thái'); p.append('field_status','status'); p.append('status', String(row.status||''));
-        p.append('header_conclusion','Kết luận'); p.append('field_conclusion','conclusion'); p.append('conclusion', String(row.conclusion||''));
-        p.append('header_reportUrl','Liên kết báo cáo'); p.append('field_reportUrl','reportUrl'); p.append('reportUrl', String(row.reportUrl||''));
-        p.append('header_sentTime','Thời gian gửi'); p.append('field_sentTime','sent_time'); p.append('sent_time', nowViMinute());
-        p.append('header_sentTimeISO','Thời gian gửi (ISO phút)'); p.append('field_sentTimeISO','sent_time_iso'); p.append('sent_time_iso', nowIsoMinute());
+        const row = Object.assign({}, it || {}, overrides || {});
+
+        // Chỉ gửi dữ liệu thực tế theo đúng tên trường trong json.json (không có header_ và field_ prefix)
+        if (row.id) p.append('Id', String(row.id));
+        if (row.ngayYeuCauCacBen) p.append('Ngày yêu cầu của các bên', String(row.ngayYeuCauCacBen));
+        if (row.hanMongMuonCacBen) p.append('Hạn mong muốn của các bên', String(row.hanMongMuonCacBen));
+        if (row.ngayBatDauThucTe) p.append('Ngày bắt đầu thực tế', String(row.ngayBatDauThucTe));
+        if (row.ngayHoanThanhThucTe) p.append('Ngày hoàn thành thực tế', String(row.ngayHoanThanhThucTe));
+        if (row.maTacVu || row.code) p.append('Mã tác vụ', String(row.maTacVu || row.code || ''));
+        if (row.tenTacVu || row.title) p.append('Tên tác vụ', String(row.tenTacVu || row.title || ''));
+        if (row.nhaCungCap) p.append('Nhà cung cấp', String(row.nhaCungCap));
+        if (row.mucDichDanhGia) p.append('Mục đích đánh giá', String(row.mucDichDanhGia));
+        if (row.ghiChuYeuCau) p.append('Ghi chú của yêu cầu', String(row.ghiChuYeuCau));
+        if (row.nguoiYeuCau) p.append('Người yêu cầu', String(row.nguoiYeuCau));
+        if (row.emailNguoiYeuCau) p.append('Email người yêu cầu', String(row.emailNguoiYeuCau));
+        if (row.emailNguoiNhanTacVu) p.append('Email người nhận tác vụ', String(row.emailNguoiNhanTacVu));
+        if (row.ketQua) p.append('Kết quả', String(row.ketQua));
+        if (row.maBaoCao) p.append('Mã báo cáo', String(row.maBaoCao));
+        if (row.ghiChuBaoCao) p.append('Ghi chú báo cáo', String(row.ghiChuBaoCao));
+        if (row.linkBC || row.reportUrl) p.append('LinkBC', String(row.linkBC || row.reportUrl || ''));
+        if (row.nhanXetTruongNhom || row.conclusion) p.append('Nhận xét trưởng nhóm', String(row.nhanXetTruongNhom || row.conclusion || ''));
+        if (row.maPheDuyet) p.append('Mã phê duyệt', String(row.maPheDuyet));
+        if (row.nhanXetTruongPhong) p.append('Nhận xét của trưởng phòng', String(row.nhanXetTruongPhong));
+        if (row.linkKOI) p.append('LinkKOI', String(row.linkKOI));
+        if (row.fileDinhKem) p.append('File đính kèm', String(row.fileDinhKem));
+        if (row.nguoiThucHien || row.reporter) p.append('Người thực hiện', String(row.nguoiThucHien || row.reporter || ''));
       }catch(_){ }
     }
       function canonicalStatus(s){
@@ -477,12 +690,11 @@
       Object.assign(pageParams, { page:String(pg), page_index:String(pg), pageNumber:String(pg), pageSize:String(ps), limit:String(ps), size:String(ps), per_page:String(ps), offset:String(offset) });
 
       const qs = new URLSearchParams({ action:'reports_query', ...headerMapReports, _ts: Date.now().toString() });
-      function setDebug(url, raw, first){ try{ const u=document.getElementById('dbg-url'); if(u) u.textContent = url; const t=document.getElementById('dbg-raw'); if(t) t.value = raw||''; const f=document.getElementById('dbg-row'); if(f) f.value = first? JSON.stringify(first,null,2):''; }catch(_){ } }
-      async function fetchJson(url){ const full=`${url}?${qs.toString()}`; const r = await fetch(full, { method:'GET', cache:'no-store' }); const txt = await r.text(); let parsed=null; try{ parsed=JSON.parse(txt);}catch{} setDebug(full, (txt && txt.length? txt: '[empty]').slice(0,4000), null); return { ok:r.ok, parsed, raw:txt, status:r.status, fullUrl:full }; }
-      async function postJson(url, params){ const body = new URLSearchParams(params||{}); const r = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, body: body.toString(), cache:'no-store' }); const txt = await r.text(); let parsed=null; try{ parsed=JSON.parse(txt);}catch{} setDebug(url+' [POST]', (txt && txt.length? txt: '[empty]').slice(0,4000), null); return { ok:r.ok, parsed, raw:txt, status:r.status, fullUrl:url+' [POST]' }; }
+      async function fetchJson(url){ const full=`${url}?${qs.toString()}`; const r = await fetch(full, { method:'GET', cache:'no-store' }); const txt = await r.text(); let parsed=null; try{ parsed=JSON.parse(txt);}catch{} return { ok:r.ok, parsed, raw:txt, status:r.status, fullUrl:full }; }
+      async function postJson(url, params){ const body = new URLSearchParams(params||{}); const r = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, body: body.toString(), cache:'no-store' }); const txt = await r.text(); let parsed=null; try{ parsed=JSON.parse(txt);}catch{} return { ok:r.ok, parsed, raw:txt, status:r.status, fullUrl:url+' [POST]' }; }
       async function fetchJsonMinimal(url){
         const qs2 = new URLSearchParams({ action:'reports_query', ...headerMapReports, _ts: Date.now().toString() });
-        const full=`${url}?${qs2.toString()}`; const r=await fetch(full,{method:'GET'}); const txt=await r.text(); let parsed=null; try{ parsed=JSON.parse(txt);}catch{} setDebug(full, txt.slice(0,4000), null); return { ok:r.ok, parsed, raw:txt, status:r.status, fullUrl:full };
+        const full=`${url}?${qs2.toString()}`; const r=await fetch(full,{method:'GET'}); const txt=await r.text(); let parsed=null; try{ parsed=JSON.parse(txt);}catch{} return { ok:r.ok, parsed, raw:txt, status:r.status, fullUrl:full };
       }
       function safeParse(txt){ try{ return JSON.parse(txt); }catch(_){ return null; } }
       function collectRowsDeep(json){
@@ -575,20 +787,47 @@
       }
       const normalizedRows = rows.map(x=>{
         const lx = lowerKeyMap(x||{});
+        // Map từ cấu trúc JSON mới
         const id = getFrom(lx,'id','ID','reportId','report_id');
-        const code = getFrom(lx,'code','mã báo cáo','ma','taskcode','reportCode');
-        const title = getFrom(lx,'title','tiêu đề','name','reportTitle','tên');
-        const reporter = getFrom(lx,'reporter','người lập','employee','author','nhân viên');
+        const code = getFrom(lx,'mã tác vụ','code','mã báo cáo','ma','taskcode','reportCode');
+        const title = getFrom(lx,'tên tác vụ','title','tiêu đề','name','reportTitle','tên');
+        const reporter = getFrom(lx,'người thực hiện','reporter','người lập','employee','author','nhân viên');
         const reporterEmail = getFrom(lx,'reporterEmail','email');
-        const submitDate = getFrom(lx,'submitDate','ngày nộp','date','ngaynop','ngaynộp','ngaynộp');
-        const wishDate = getFrom(lx,'wishDate','hạn mong muốn','hanmongmuon','wish');
-        const dueDate = getFrom(lx,'dueDate','deadline','hạn đánh giá');
-        const statusRaw = getFrom(lx,'status','trạng thái','trangthai');
-        const conclusion = getFrom(lx,'conclusion','kết luận','ketluan');
-        const reportUrl = getFrom(lx,'reportUrl','liên kết báo cáo','url','link','href');
+        const submitDate = getFrom(lx,'ngày hoàn thành thực tế');
+        const wishDate = getFrom(lx,'hạn mong muốn của các bên','wishDate','hạn mong muốn','hanmongmuon','wish');
+        const dueDate = getFrom(lx,'dueDate','deadline','hạn đánh giá','ngày hoàn thành thực tế');
+
+        // Các trường theo đúng json.json
+        const ngayYeuCauCacBen = getFrom(lx,'ngày yêu cầu của các bên');
+        const hanMongMuonCacBen = getFrom(lx,'hạn mong muốn của các bên');
+        const ngayBatDauThucTe = getFrom(lx,'ngày bắt đầu thực tế');
+        const ngayHoanThanhThucTe = getFrom(lx,'ngày hoàn thành thực tế');
+        const maTacVu = getFrom(lx,'mã tác vụ');
+        const tenTacVu = getFrom(lx,'tên tác vụ');
+        const nhaCungCap = getFrom(lx,'nhà cung cấp');
+        const mucDichDanhGia = getFrom(lx,'mục đích đánh giá');
+        const ghiChuYeuCau = getFrom(lx,'ghi chú của yêu cầu');
+        const nguoiYeuCau = getFrom(lx,'người yêu cầu');
+        const emailNguoiYeuCau = getFrom(lx,'email người yêu cầu');
+        const emailNguoiNhanTacVu = getFrom(lx,'email người nhận tác vụ');
+        const ketQua = getFrom(lx,'kết quả');
+        const maBaoCao = getFrom(lx,'mã báo cáo');
+        const ghiChuBaoCao = getFrom(lx,'ghi chú báo cáo');
+        const linkBC = getFrom(lx,'linkbc');
+        const nhanXetTruongNhom = getFrom(lx,'nhận xét trưởng nhóm');
+        const maPheDuyet = getFrom(lx,'mã phê duyệt');
+        const nhanXetTruongPhong = getFrom(lx,'nhận xét của trưởng phòng');
+        const linkKOI = getFrom(lx,'linkkoi');
+        const fileDinhKem = getFrom(lx,'file đính kèm');
+        const nguoiThucHien = getFrom(lx,'người thực hiện');
+
+        const statusRaw = getFrom(lx,'kết quả','status','trạng thái','trangthai');
+        const conclusion = getFrom(lx,'nhận xét trưởng nhóm','conclusion','kết luận','ketluan','ghi chú báo cáo');
+        const reportUrl = getFrom(lx,'linkbc','reportUrl','liên kết báo cáo','url','link','href');
+        const reportCode = getFrom(lx,'mã báo cáo');
         return {
           id: id || code || '',
-          code: code || id || '',
+          code: code || id || reportCode || '',
           title: title || '',
           reporter: reporter || '',
           reporterEmail: reporterEmail || '',
@@ -597,12 +836,40 @@
           dueDate: dueDate || '',
           status: (function(){
             const s = String(statusRaw||'').trim().toLowerCase();
+            // Map các trạng thái từ JSON mới
+            if (s === 'done') return 'Approved';
+            if (s === 'doing') return 'Pending1';
+            if (s.includes('trưởng nhóm review') || s.includes('truong nhom review')) return 'Pending2';
             if (s.includes('chờ phê duyệt 1') || s.includes('cho phe duyet 1')) return 'Pending1';
             if (s.includes('chờ phê duyệt 2') || s.includes('cho phe duyet 2')) return 'Pending2';
             return normalizeStatus(statusRaw || 'Pending1');
           })(),
           conclusion: conclusion || '',
-          reportUrl: reportUrl || ''
+          reportUrl: reportUrl || '',
+
+          // Giữ toàn bộ dữ liệu gốc (theo json.json) để gửi lại khi action
+          ngayYeuCauCacBen: ngayYeuCauCacBen || '',
+          hanMongMuonCacBen: hanMongMuonCacBen || '',
+          ngayBatDauThucTe: ngayBatDauThucTe || '',
+          ngayHoanThanhThucTe: ngayHoanThanhThucTe || '',
+          maTacVu: maTacVu || code || '',
+          tenTacVu: tenTacVu || title || '',
+          nhaCungCap: nhaCungCap || '',
+          mucDichDanhGia: mucDichDanhGia || '',
+          ghiChuYeuCau: ghiChuYeuCau || '',
+          nguoiYeuCau: nguoiYeuCau || '',
+          emailNguoiYeuCau: emailNguoiYeuCau || '',
+          emailNguoiNhanTacVu: emailNguoiNhanTacVu || '',
+          ketQua: ketQua || String(statusRaw||'') || '',
+          maBaoCao: maBaoCao || reportCode || '',
+          ghiChuBaoCao: ghiChuBaoCao || '',
+          linkBC: linkBC || reportUrl || '',
+          nhanXetTruongNhom: nhanXetTruongNhom || conclusion || '',
+          maPheDuyet: maPheDuyet || '',
+          nhanXetTruongPhong: nhanXetTruongPhong || '',
+          linkKOI: linkKOI || '',
+          fileDinhKem: fileDinhKem || '',
+          nguoiThucHien: nguoiThucHien || reporter || ''
         };
       });
       const isMeaningful = (r)=>{
@@ -616,7 +883,6 @@
         const key = [r.id,r.code,r.title,r.reporter,r.submitDate,r.reportUrl].map(x=> String(x||'').trim().toLowerCase()).join('|');
         if (seenKeys.has(key)) return false; seenKeys.add(key); return true;
       });
-      try{ setDebug(resp.fullUrl||'', resp.raw||'', cleanedRows[0]||null); if(!resp.raw || !String(resp.raw).trim()){ const panel=document.getElementById('debug-panel'); if(panel) panel.style.display='block'; } }catch(_){ }
       try{
         const statusCounts = (cleanedRows||[]).reduce((acc, it)=>{
           const k = String(it?.status||'').toLowerCase(); acc[k] = (acc[k]||0)+1; return acc;
@@ -797,8 +1063,16 @@
           if (!codeInput){ throw new Error('Vui lòng nhập mã bảo mật trước khi duyệt.'); }
           const CODE_TO_NAME = { 'vietvip':'Nguyễn Thế Việt' };
           const reviewer = codeInput;
-          const p = new URLSearchParams({ action:'report_approve', id:String(CURRENT_ITEM_ID), reviewer, comment, next_status:'Pending2', qa_code: qaCode, _ts: Date.now().toString() });
-          try{ const it = findItem(CURRENT_ITEM_ID); appendRowParams(p, it); }catch(_){ }
+          const p = new URLSearchParams({ action:'report_approve', id:String(CURRENT_ITEM_ID), reviewer, _ts: Date.now().toString() });
+          try{ 
+            const it = findItem(CURRENT_ITEM_ID); 
+            const overrides = {
+              nhanXetTruongNhom: comment || '',
+              maPheDuyet: qaCode,
+              ketQua: 'Trưởng nhóm Review'
+            };
+            appendRowParams(p, it, overrides); 
+          }catch(_){ }
           async function tryPost(url){ try{ const r=await fetch(url, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:p.toString(), cache:'no-store' }); const t=await r.text(); return { ok:r.ok, raw:t }; }catch(err){ return { ok:false, raw:String(err||'') }; } }
           let r = await tryPost(FORM_ACTION_URL);
           if (!r.ok) r = await tryPost(FORM_ACTION_URL);
@@ -814,10 +1088,18 @@
       const prev = btn.textContent; btn.disabled=true; btn.innerHTML = "<span class='spinner mr-2'></span>Đang gửi...";
       const reason = (document.getElementById('reject-reason')?.value||'').trim();
       if (!reason){ showToast('Vui lòng nhập lý do.','error'); btn.disabled=false; btn.textContent=prev; return; }
-      const qaCode = generateQaPdCode();
-      try{
-          const p = new URLSearchParams({ action:'report_reject', id:String(CURRENT_ITEM_ID), reviewer: (document.getElementById('secret-code')?.value||'').trim(), reason, qa_code: qaCode, _ts: Date.now().toString() });
-          try{ const it = findItem(CURRENT_ITEM_ID); appendRowParams(p, it); }catch(_){ }
+          const qaCode = generateQaPdCode();
+          try{
+          const p = new URLSearchParams({ action:'report_reject', id:String(CURRENT_ITEM_ID), reviewer: (document.getElementById('secret-code')?.value||'').trim(), _ts: Date.now().toString() });
+          try{ 
+            const it = findItem(CURRENT_ITEM_ID); 
+            const overrides = {
+              nhanXetTruongNhom: reason || '',
+              maPheDuyet: qaCode,
+              ketQua: 'Rejected'
+            };
+            appendRowParams(p, it, overrides); 
+          }catch(_){ }
           async function tryPost(url){ try{ const r=await fetch(url, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:p.toString(), cache:'no-store' }); const t=await r.text(); return { ok:r.ok, raw:t }; }catch(err){ return { ok:false, raw:String(err||'') }; } }
           let r = await tryPost(FORM_ACTION_URL);
           if (!r.ok) r = await tryPost(FORM_ACTION_URL);
@@ -833,10 +1115,19 @@
       const prev = btn.textContent; btn.disabled=true; btn.innerHTML = "<span class='spinner mr-2'></span>Đang gửi...";
       const comment = (document.getElementById('req-comment')?.value||'').trim();
       const dueDate = (document.getElementById('req-due')?.value||'').trim();
-      const qaCode = generateQaPdCode();
-      try{
-          const p = new URLSearchParams({ action:'report_request_changes', id:String(CURRENT_ITEM_ID), reviewer: (document.getElementById('secret-code')?.value||'').trim(), comment, dueDate, qa_code: qaCode, _ts: Date.now().toString() });
-          try{ const it = findItem(CURRENT_ITEM_ID); appendRowParams(p, it); }catch(_){ }
+          const qaCode = generateQaPdCode();
+          try{
+          const p = new URLSearchParams({ action:'report_request_changes', id:String(CURRENT_ITEM_ID), reviewer: (document.getElementById('secret-code')?.value||'').trim(), _ts: Date.now().toString() });
+          try{ 
+            const it = findItem(CURRENT_ITEM_ID); 
+            const overrides = {
+              nhanXetTruongNhom: comment || '',
+              maPheDuyet: qaCode,
+              ketQua: 'ChangesRequested',
+              hanMongMuonCacBen: dueDate || it.hanMongMuonCacBen || ''
+            };
+            appendRowParams(p, it, overrides); 
+          }catch(_){ }
           async function tryPost(url){ try{ const r=await fetch(url, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:p.toString(), cache:'no-store' }); const t=await r.text(); return { ok:r.ok, raw:t }; }catch(err){ return { ok:false, raw:String(err||'') }; } }
           let r = await tryPost(FORM_ACTION_URL);
           if (!r.ok) r = await tryPost(FORM_ACTION_URL);
@@ -845,6 +1136,679 @@
         await reload();
       }catch(err){ showToast('Lỗi gửi yêu cầu.','error'); }
       finally{ btn.disabled=false; btn.textContent = prev||'Gửi yêu cầu'; }
+    }
+
+    // ===== Statistics
+    let chartStatus = null;
+    let chartReporter = null;
+
+    function calculateStatistics(items, groupFilter = 'all', fromDate = null, toDate = null){
+      let filtered = items.filter(it => {
+        if (!isInGroup(it.reporter, groupFilter)) return false;
+        if (fromDate || toDate) {
+          const sub = parseDateFlexible(it.submitDate);
+          if (sub) {
+            if (fromDate && sub.getTime() < new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate()).getTime()) return false;
+            if (toDate && sub.getTime() > new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate(), 23, 59, 59, 999).getTime()) return false;
+          }
+        }
+        return true;
+      });
+
+      const stats = {
+        total: filtered.length,
+        pending: 0,
+        approved: 0,
+        changes: 0,
+        rejected: 0,
+        testben: 0,
+        byStatus: {},
+        byReporter: {}
+      };
+
+      filtered.forEach(it => {
+        const status = canonicalStatus(it.status);
+        stats.byStatus[status] = (stats.byStatus[status] || 0) + 1;
+        
+        if (status === 'pending1' || status === 'pending2') stats.pending++;
+        else if (status === 'approved') stats.approved++;
+        else if (status === 'changesrequested') stats.changes++;
+        else if (status === 'rejected') stats.rejected++;
+        else if (status === 'testben') stats.testben++;
+
+        const reporter = it.reporter || 'Không xác định';
+        if (!stats.byReporter[reporter]) {
+          stats.byReporter[reporter] = {
+            total: 0,
+            pending: 0,
+            approved: 0,
+            changes: 0,
+            rejected: 0
+          };
+        }
+        stats.byReporter[reporter].total++;
+        if (status === 'pending1' || status === 'pending2') stats.byReporter[reporter].pending++;
+        else if (status === 'approved') stats.byReporter[reporter].approved++;
+        else if (status === 'changesrequested') stats.byReporter[reporter].changes++;
+        else if (status === 'rejected') stats.byReporter[reporter].rejected++;
+      });
+
+      return stats;
+    }
+
+    function updateStatisticsDisplay(stats){
+      document.getElementById('stat-total').textContent = stats.total;
+      document.getElementById('stat-pending').textContent = stats.pending;
+      document.getElementById('stat-approved').textContent = stats.approved;
+      document.getElementById('stat-changes').textContent = stats.changes;
+
+      // Cập nhật biểu đồ trạng thái
+      const statusLabels = {
+        'pending1': 'Chờ phê duyệt 1',
+        'pending2': 'Trưởng nhóm Review',
+        'approved': 'Đã duyệt',
+        'changesrequested': 'Đang sửa',
+        'rejected': 'Từ chối',
+        'testben': 'Test bền'
+      };
+
+      const statusData = [];
+      const statusColors = {
+        'pending1': '#fda4af',
+        'pending2': '#ec4899',
+        'approved': '#10b981',
+        'changesrequested': '#f59e0b',
+        'rejected': '#ef4444',
+        'testben': '#8b5cf6'
+      };
+
+      const labels = [];
+      const data = [];
+      const colors = [];
+
+      Object.keys(statusLabels).forEach(key => {
+        if (stats.byStatus[key] > 0) {
+          labels.push(statusLabels[key]);
+          data.push(stats.byStatus[key]);
+          colors.push(statusColors[key] || '#94a3b8');
+        }
+      });
+
+      const ctxStatus = document.getElementById('chart-status');
+      if (ctxStatus) {
+        if (chartStatus) chartStatus.destroy();
+        chartStatus = new Chart(ctxStatus, {
+          type: 'doughnut',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: data,
+              backgroundColor: colors,
+              borderWidth: 2,
+              borderColor: '#ffffff'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                position: 'bottom'
+              }
+            }
+          }
+        });
+      }
+
+      // Cập nhật biểu đồ theo người lập (top 10)
+      const reporters = Object.entries(stats.byReporter)
+        .sort((a, b) => b[1].total - a[1].total)
+        .slice(0, 10);
+
+      const reporterLabels = reporters.map(r => r[0]);
+      const reporterData = reporters.map(r => r[1].total);
+      const reporterColors = Array.from({length: reporters.length}, (_, i) => {
+        const hues = ['#ec4899', '#f472b6', '#fda4af', '#fecdd3', '#f9a8d4'];
+        return hues[i % hues.length];
+      });
+
+      const ctxReporter = document.getElementById('chart-reporter');
+      if (ctxReporter) {
+        if (chartReporter) chartReporter.destroy();
+        chartReporter = new Chart(ctxReporter, {
+          type: 'bar',
+          data: {
+            labels: reporterLabels,
+            datasets: [{
+              label: 'Số lượng báo cáo',
+              data: reporterData,
+              backgroundColor: reporterColors,
+              borderColor: '#ec4899',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              }
+            }
+          }
+        });
+      }
+
+      // Cập nhật bảng thống kê
+      const tbody = document.getElementById('stats-table-body');
+      if (tbody) {
+        const sortedReporters = Object.entries(stats.byReporter)
+          .sort((a, b) => b[1].total - a[1].total);
+        
+        if (sortedReporters.length === 0) {
+          tbody.innerHTML = '<tr><td class="px-3 py-3 text-center text-gray-500" colspan="6">Chưa có dữ liệu</td></tr>';
+        } else {
+          tbody.innerHTML = sortedReporters.map(([reporter, data]) => `
+            <tr>
+              <td class="px-3 py-2 font-medium">${reporter}</td>
+              <td class="px-3 py-2 text-center">${data.total}</td>
+              <td class="px-3 py-2 text-center">${data.pending}</td>
+              <td class="px-3 py-2 text-center">${data.approved}</td>
+              <td class="px-3 py-2 text-center">${data.changes}</td>
+              <td class="px-3 py-2 text-center">${data.rejected}</td>
+            </tr>
+          `).join('');
+        }
+      }
+    }
+
+    function loadStatistics(){
+      if (!ALL_ITEMS || ALL_ITEMS.length === 0) {
+        showToast('Vui lòng tải dữ liệu trước', 'error');
+        return;
+      }
+      const group = document.getElementById('stats-group')?.value || 'all';
+      const fromRaw = document.getElementById('stats-from')?.value || '';
+      const toRaw = document.getElementById('stats-to')?.value || '';
+      const fromDate = fromRaw ? parseDateFlexible(fromRaw) : null;
+      const toDate = toRaw ? parseDateFlexible(toRaw) : null;
+      
+      const stats = calculateStatistics(ALL_ITEMS, group, fromDate, toDate);
+      updateStatisticsDisplay(stats);
+    }
+
+    // ===== Assign Functions
+    async function fetchAssignData(){
+      try{
+        const qs = new URLSearchParams({ action:'assign_query', _ts: Date.now().toString() });
+        const url = `${ASSIGN_QUERY_URL}?${qs.toString()}`;
+        const r = await fetch(url, { method:'GET', cache:'no-store' });
+        const txt = await r.text();
+        let parsed = null;
+        try{ parsed = JSON.parse(txt); }catch(_){ }
+        
+        if (!r.ok) return [];
+        
+        function collectRowsDeep(json){
+          if(!json) return [];
+          if(Array.isArray(json)) return json;
+          const out=[]; const seen=new Set(); const q=[json];
+          try{
+            while(q.length){
+              const cur=q.shift(); if(!cur||typeof cur!=='object'||seen.has(cur)) continue; seen.add(cur);
+              for(const v of Object.values(cur)){
+                if(Array.isArray(v)){
+                  if(v.length && typeof v[0]==='object') out.push(...v);
+                  v.forEach(x=>{ if(x && typeof x==='object') q.push(x); });
+                  continue;
+                }
+                if(typeof v==='string'){
+                  try{ const j = JSON.parse(v); if(j){ q.push(j); continue; } }catch(_){ }
+                }
+                if(v && typeof v==='object') q.push(v);
+              }
+            }
+          }catch(_){ }
+          return out.length? out: (typeof json==='object'? [json]: []);
+        }
+        
+        const rows = collectRowsDeep(parsed ?? (txt? JSON.parse(txt): null));
+        
+        function lowerKeyMap(obj){
+          const map={};
+          try{ Object.keys(obj||{}).forEach(k=>{ map[String(k).toLowerCase()] = obj[k]; }); }catch(_){ }
+          return map;
+        }
+        
+        function getFrom(lowerObj, ...keys){
+          for(const k of keys){
+            const kk = String(k||'').toLowerCase();
+            if (lowerObj.hasOwnProperty(kk)) return lowerObj[kk];
+          }
+          return '';
+        }
+        
+        const normalized = rows.map(x=>{
+          const lx = lowerKeyMap(x||{});
+          return {
+            id: getFrom(lx,'id','ID'),
+            code: getFrom(lx,'mã tác vụ','code','ma','taskcode'),
+            title: getFrom(lx,'tên tác vụ','title','name','tên'),
+            requester: getFrom(lx,'người yêu cầu','requester','nguoiyc'),
+            // Map đúng theo json.json: "Ngày yêu cầu của các bên"
+            requestDate: getFrom(lx,'ngày yêu cầu của các bên','ngày yêu cầu','requestdate','ngayyeucau'),
+            // Map đúng theo json.json: "Hạn mong muốn của các bên"
+            wishDate: getFrom(lx,'hạn mong muốn của các bên','hạn mong muốn','wishdate','hanmongmuon'),
+            // Trường quan trọng: "Người thực hiện" - dùng để phân loại
+            assignee: getFrom(lx,'người thực hiện','assignee','nguoithuchien','reporter'),
+            status: getFrom(lx,'kết quả','trạng thái','status','trangthai','ketqua'),
+            note: getFrom(lx,'ghi chú của yêu cầu','ghi chú báo cáo','ghi chú','note','ghichu'),
+            // Giữ toàn bộ dữ liệu gốc (theo đúng cấu trúc json.json)
+            raw: x
+          };
+        });
+        
+        return normalized.filter(r=> r.id || r.code || r.title);
+      }catch(err){
+        console.error('[Assign] Fetch error:', err);
+        return [];
+      }
+    }
+
+    function applyAssignFilters(all, tab){
+      const q = (document.getElementById('assign-flt-q')?.value || '').trim().toLowerCase();
+      const from = parseDateFlexible(document.getElementById('assign-flt-from')?.value || '');
+      const to = parseDateFlexible(document.getElementById('assign-flt-to')?.value || '');
+      
+      return all.filter(it=>{
+        // Lọc theo tab
+        const hasAssignee = String(it.assignee||'').trim().length > 0;
+        if (tab === 'unassigned' && hasAssignee) return false;
+        if (tab === 'assigned' && !hasAssignee) return false;
+        
+        // Lọc theo từ khóa
+        if (q){
+          const searchText = [it.code, it.title, it.requester].join(' ').toLowerCase();
+          if (!searchText.includes(q)) return false;
+        }
+        
+        // Lọc theo ngày
+        const reqDate = parseDateFlexible(it.requestDate);
+        if (from && reqDate){
+          if (reqDate.getTime() < new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime()) return false;
+        }
+        if (to && reqDate){
+          if (reqDate.getTime() > new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59, 999).getTime()) return false;
+        }
+        
+        return true;
+      });
+    }
+
+    function updateAssignPager(total){
+      const pager = document.getElementById('assign-pager');
+      const info = document.getElementById('assign-page-info');
+      const ps = ASSIGN_PAGE_SIZE;
+      const pages = Math.max(1, Math.ceil(total/ps));
+      if (ASSIGN_CURRENT_PAGE > pages) ASSIGN_CURRENT_PAGE = pages;
+      if (info) info.textContent = `Trang ${ASSIGN_CURRENT_PAGE}/${pages} (${total} dòng)`;
+      if (pager) pager.style.display = total>0 ? 'flex' : 'none';
+    }
+
+    function renderAssignTable(){
+      const body = document.getElementById('assign-list-body');
+      if (!body) return;
+      
+      const total = ASSIGN_FILTERED.length;
+      updateAssignPager(total);
+      
+      if (!total){
+        body.innerHTML = '<tr><td class="px-3 py-3 text-center text-gray-500" colspan="8">Chưa có dữ liệu</td></tr>';
+        return;
+      }
+      
+      const start = (ASSIGN_CURRENT_PAGE-1)*ASSIGN_PAGE_SIZE;
+      const end = Math.min(total, start+ASSIGN_PAGE_SIZE);
+      const pageItems = ASSIGN_FILTERED.slice(start, end);
+      
+      body.innerHTML = pageItems.map(it=>{
+        const hasAssignee = String(it.assignee||'').trim().length > 0;
+        const statusBadge = hasAssignee 
+          ? '<span class="px-2 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">Đã phân công</span>'
+          : '<span class="px-2 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">Chưa phân công</span>';
+        
+        return `
+          <tr>
+            <td class="px-3 py-2"><span class="font-medium">${it.code || ''}</span></td>
+            <td class="px-3 py-2">${it.title || ''}</td>
+            <td class="px-3 py-2">${it.requester || ''}</td>
+            <td class="px-3 py-2">${fmtDmy(it.requestDate)}</td>
+            <td class="px-3 py-2">${fmtDmy(it.wishDate)}</td>
+            <td class="px-3 py-2">${it.assignee || '<span class="text-gray-400">Chưa có</span>'}</td>
+            <td class="px-3 py-2">${statusBadge}</td>
+            <td class="px-3 py-2">
+              <div class="flex items-center gap-2">
+                ${!hasAssignee ? `<button class="px-3 py-1 rounded-full text-white font-semibold bg-primary-blue hover:brightness-105 act-assign" data-id="${it.id || it.code}">Phân công</button>` : `<button class="px-3 py-1 rounded-full text-white font-semibold bg-amber-500 hover:brightness-105 act-change-assign" data-id="${it.id || it.code}">Thay đổi</button>`}
+                <button class="px-3 py-1 rounded-full text-white font-semibold bg-gray-500 hover:brightness-105 act-view-detail" data-id="${it.id || it.code}">Chi tiết</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function updateAssignCounts(){
+      const unassigned = ASSIGN_FILTERED.filter(it=> !String(it.assignee||'').trim().length).length;
+      const assigned = ASSIGN_FILTERED.filter(it=> String(it.assignee||'').trim().length > 0).length;
+      
+      const unassignedEl = document.getElementById('count-unassigned');
+      const assignedEl = document.getElementById('count-assigned');
+      if (unassignedEl) unassignedEl.textContent = unassigned;
+      if (assignedEl) assignedEl.textContent = assigned;
+    }
+
+    async function reloadAssign(){
+      const btn = document.getElementById('btn-reload-assign');
+      const prev = btn?.textContent || '';
+      if (btn) { btn.disabled = true; btn.innerHTML = "<span class='spinner mr-2'></span>Đang tải..."; }
+      
+      try{
+        const items = await fetchAssignData();
+        ALL_ASSIGN_ITEMS = Array.isArray(items) ? items : [];
+        ASSIGN_FILTERED = applyAssignFilters(ALL_ASSIGN_ITEMS, ASSIGN_CURRENT_TAB);
+        ASSIGN_CURRENT_PAGE = 1;
+        updateAssignCounts();
+        renderAssignTable();
+      }catch(err){
+        showToast('Lỗi tải dữ liệu phân công.', 'error');
+      }finally{
+        if (btn) { btn.disabled = false; btn.textContent = prev || '🔄 Làm mới'; }
+      }
+    }
+
+    function switchAssignTab(tab){
+      ASSIGN_CURRENT_TAB = tab;
+      document.querySelectorAll('.assign-tab-btn').forEach(btn => {
+        btn.classList.remove('active', 'border-primary-blue');
+        if (btn.getAttribute('data-tab') === tab) {
+          btn.classList.add('active', 'border-primary-blue');
+        }
+      });
+      ASSIGN_FILTERED = applyAssignFilters(ALL_ASSIGN_ITEMS, tab);
+      ASSIGN_CURRENT_PAGE = 1;
+      updateAssignCounts();
+      renderAssignTable();
+    }
+
+    function populateAssignPersonSelect(){
+      const select = document.getElementById('assign-person');
+      if (!select) return;
+      
+      select.innerHTML = '<option value="">-- Chọn người thực hiện --</option>';
+      NHOM_NCTN2.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+      });
+    }
+
+    async function doAssign(){
+      const btn = document.getElementById('assign-do');
+      if (!ASSIGN_CURRENT_ITEM || !btn) return;
+      
+      const prev = btn.textContent;
+      btn.disabled = true;
+      btn.innerHTML = "<span class='spinner mr-2'></span>Đang gửi...";
+      
+      const person = document.getElementById('assign-person')?.value || '';
+      const note = document.getElementById('assign-note')?.value || '';
+      
+      if (!person){
+        showToast('Vui lòng chọn người thực hiện', 'error');
+        btn.disabled = false;
+        btn.textContent = prev;
+        return;
+      }
+      
+      try{
+        const it = ALL_ASSIGN_ITEMS.find(x=> String(x.id)===String(ASSIGN_CURRENT_ITEM) || String(x.code)===String(ASSIGN_CURRENT_ITEM));
+        if (!it) throw new Error('Không tìm thấy tác vụ');
+        
+        const p = new URLSearchParams();
+        
+        // Gửi tất cả dữ liệu gốc từ raw object (theo đúng cấu trúc json.json)
+        if (it.raw) {
+          try{
+            Object.keys(it.raw).forEach(k => {
+              const v = it.raw[k];
+              // Bỏ qua các trường null hoặc undefined, nhưng giữ lại chuỗi rỗng nếu cần
+              if (v !== null && v !== undefined) {
+                p.set(k, String(v));
+              }
+            });
+          }catch(_){}
+        }
+        
+        // Đảm bảo có các trường bắt buộc nếu raw không có
+        if (!it.raw || !it.raw['Id']) {
+          if (it.id) p.set('Id', String(it.id));
+        }
+        if (!it.raw || !it.raw['Mã tác vụ']) {
+          if (it.code) p.set('Mã tác vụ', String(it.code));
+        }
+        if (!it.raw || !it.raw['Tên tác vụ']) {
+          if (it.title) p.set('Tên tác vụ', String(it.title));
+        }
+        
+        // Lấy người thực hiện trước đó (nếu có, nếu không thì null)
+        const previousAssignee = (ASSIGN_IS_CHANGE_MODE && (it.assignee || (it.raw && it.raw['Người thực hiện']))) 
+          ? (it.assignee || it.raw['Người thực hiện']) 
+          : null;
+        
+        // Cập nhật trường "Người thực hiện" (theo đúng tên trường trong json.json)
+        // Dùng set() để ghi đè giá trị cũ nếu có
+        p.set('Người thực hiện', person);
+        
+        // Luôn thêm người thực hiện trước đó (rỗng nếu phân công mới)
+        p.set('Người thực hiện trước đó', previousAssignee || '');
+        
+        // Thêm thời gian tại thời điểm gửi
+        const now = new Date();
+        const timeISO = now.toISOString(); // Format: 2026-01-20T10:30:00.000Z
+        const timeVi = nowViMinute(); // Format: 20/01/2026 10:30
+        const timeViFull = now.toLocaleString('vi-VN', { 
+          year: 'numeric', 
+          month: '2-digit', 
+          day: '2-digit', 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit',
+          timeZone: 'Asia/Ho_Chi_Minh'
+        });
+        
+        p.set('Thời gian phân công', timeVi);
+        p.set('Thời gian phân công (ISO)', timeISO);
+        p.set('Thời gian phân công (đầy đủ)', timeViFull);
+        p.set('Ngày giờ phân công', timeISO);
+        
+        // Cập nhật ghi chú nếu có (theo json.json có thể là "Ghi chú của yêu cầu")
+        if (note) {
+          p.set('Ghi chú của yêu cầu', note);
+        }
+        
+        // Thêm action để server biết đây là thao tác phân công/thay đổi
+        p.set('action', ASSIGN_IS_CHANGE_MODE ? 'change_assignee' : 'assign_task');
+        
+        // Log để debug
+        console.log('[Assign] Sending data:', {
+          id: it.id || it.code,
+          code: it.code,
+          title: it.title,
+          assignee: person,
+          previousAssignee: previousAssignee,
+          isChange: ASSIGN_IS_CHANGE_MODE,
+          timeSent: timeVi,
+          hasRaw: !!it.raw,
+          rawKeys: it.raw ? Object.keys(it.raw).length : 0
+        });
+        
+        async function tryPost(url){
+          try{
+            console.log('[Assign] Sending to:', url);
+            console.log('[Assign] Params:', Array.from(p.entries()));
+            
+            const r = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: p.toString(),
+              cache: 'no-store'
+            });
+            const t = await r.text();
+            console.log('[Assign] Response status:', r.status);
+            console.log('[Assign] Response body:', t);
+            
+            return { ok: r.ok, raw: t, status: r.status, url: url };
+          }catch(err){
+            console.error('[Assign] Fetch error:', err);
+            return { ok: false, raw: String(err||''), status: 0, url: url };
+          }
+        }
+        
+        // Thử cả test URL và production URL
+        const ASSIGN_ACTION_URL_PROD = 'https://xcqiyibqs.tino.page/webhook/doinguoiphancongnctn2';
+        const ASSIGN_ACTION_URL_TEST = 'https://xcqiyibqs.tino.page/webhook-test/doinguoiphancongnctn2';
+        
+        let r = await tryPost(ASSIGN_ACTION_URL_PROD);
+        
+        // Nếu production URL không thành công, thử test URL
+        if (!r.ok && r.status !== 200) {
+          console.log('[Assign] Production URL failed, trying test URL...');
+          r = await tryPost(ASSIGN_ACTION_URL_TEST);
+        }
+        
+        // Kiểm tra response
+        if (!r.ok || r.status < 200 || r.status >= 300) {
+          let errorMsg = r.raw || `HTTP ${r.status}`;
+          
+          // Parse error message nếu có
+          try {
+            const errorJson = JSON.parse(r.raw);
+            if (errorJson.message) errorMsg = errorJson.message;
+            else if (errorJson.error) errorMsg = errorJson.error;
+          } catch(_) {
+            // Nếu không parse được JSON, dùng raw text
+            if (r.raw && r.raw.length > 0 && r.raw.length < 500) {
+              errorMsg = r.raw;
+            }
+          }
+          
+          // Thông báo lỗi chi tiết hơn
+          if (r.status === 0) {
+            errorMsg = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.';
+          } else if (r.status >= 500) {
+            errorMsg = `Lỗi server (${r.status}): ${errorMsg}`;
+          } else if (r.status >= 400) {
+            errorMsg = `Lỗi request (${r.status}): ${errorMsg}`;
+          }
+          
+          throw new Error(errorMsg);
+        }
+        
+        // Kiểm tra response body có chứa lỗi không
+        let hasErrorInResponse = false;
+        if (r.raw && typeof r.raw === 'string') {
+          const lowerRaw = r.raw.toLowerCase();
+          if (lowerRaw.includes('error') || lowerRaw.includes('lỗi') || lowerRaw.includes('failed') || lowerRaw.includes('unused')) {
+            // Có thể có lỗi trong response dù status code là 200
+            console.warn('[Assign] Warning in response:', r.raw);
+            // Kiểm tra xem có phải lỗi nghiêm trọng không
+            if (lowerRaw.includes('unused respond to webhook') || lowerRaw.includes('error') || lowerRaw.includes('failed')) {
+              hasErrorInResponse = true;
+            }
+          }
+        }
+        
+        // Chỉ reload khi response thành công và không có lỗi
+        if (!hasErrorInResponse) {
+          closeModal('modal-assign');
+          const actionText = ASSIGN_IS_CHANGE_MODE ? 'đã thay đổi người thực hiện thành' : 'đã phân công cho';
+          showToast(`${actionText.charAt(0).toUpperCase() + actionText.slice(1)} ${person}`, 'success');
+          
+          // Đợi response thành công rồi mới reload lại bảng
+          await reloadAssign();
+        } else {
+          // Nếu có lỗi trong response, throw error để vào catch block
+          throw new Error(r.raw || 'Lỗi từ server');
+        }
+      }catch(err){
+        const errorMsg = err.message || 'Lỗi không xác định';
+        console.error('[Assign] Error:', err);
+        console.error('[Assign] Request params:', p ? Array.from(p.entries()) : 'N/A');
+        
+        // Hiển thị thông báo lỗi chi tiết hơn
+        let userMsg = errorMsg;
+        if (errorMsg.includes('Unused Respond to Webhook')) {
+          userMsg = 'Lỗi cấu hình webhook trên server. Vui lòng liên hệ quản trị viên để kiểm tra workflow.';
+        } else if (errorMsg.includes('không thể kết nối')) {
+          userMsg = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng và thử lại.';
+        } else if (errorMsg.includes('500')) {
+          userMsg = 'Lỗi server. Vui lòng thử lại sau hoặc liên hệ quản trị viên.';
+        } else if (errorMsg.includes('400')) {
+          userMsg = 'Dữ liệu gửi không hợp lệ. Vui lòng kiểm tra lại thông tin.';
+        }
+        
+        showToast('Lỗi: ' + userMsg, 'error');
+        
+        // Hiển thị chi tiết trong console để debug
+        console.error('[Assign] Full error details:', {
+          message: errorMsg,
+          item: it,
+          params: p ? Object.fromEntries(p.entries()) : null
+        });
+      }finally{
+        btn.disabled = false;
+        btn.textContent = prev || 'Xác nhận';
+      }
+    }
+
+    // ===== Tab Switching
+    function switchTab(targetId){
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-target') === targetId) {
+          btn.classList.add('active');
+        }
+      });
+      
+      document.querySelectorAll('section[id^="form-"]').forEach(section => {
+        section.style.display = 'none';
+      });
+      
+      const targetSection = document.getElementById(targetId);
+      if (targetSection) {
+        targetSection.style.display = 'block';
+        if (targetId === 'form-statistics') {
+          loadStatistics();
+        } else if (targetId === 'form-assign') {
+          if (ALL_ASSIGN_ITEMS.length === 0) {
+            reloadAssign();
+          } else {
+            ASSIGN_FILTERED = applyAssignFilters(ALL_ASSIGN_ITEMS, ASSIGN_CURRENT_TAB);
+            ASSIGN_CURRENT_PAGE = 1;
+            updateAssignCounts();
+            renderAssignTable();
+          }
+        }
+      }
     }
 
     // ===== Events & Init
@@ -857,17 +1821,184 @@
       });
       document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ document.querySelectorAll('.modal.open').forEach(m=> closeModal(m.id)); } });
 
-      document.getElementById('btn-debug')?.addEventListener('click', (e)=>{
-        e.preventDefault();
-        const panel=document.getElementById('debug-panel'); if(!panel) return; panel.style.display = panel.style.display==='none' ? 'block' : 'none';
+      // Tab switching
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const target = btn.getAttribute('data-target');
+          if (target) switchTab(target);
+        });
       });
+
+      // Statistics events
+      document.getElementById('btn-refresh-stats')?.addEventListener('click', () => {
+        loadStatistics();
+        showToast('Đã làm mới thống kê', 'success');
+      });
+
+      document.getElementById('btn-apply-stats')?.addEventListener('click', () => {
+        loadStatistics();
+      });
+
+      // Set default date range for statistics
+      try{
+        const statsFrom = document.getElementById('stats-from');
+        const statsTo = document.getElementById('stats-to');
+        if (statsFrom && statsTo) {
+          const now = new Date();
+          const start = new Date(now.getFullYear(), now.getMonth(), 1);
+          const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          const toISO = (x) => `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
+          statsFrom.value = toISO(start);
+          statsTo.value = toISO(end);
+        }
+      }catch(_){}
+
+      // Assign events
+      document.getElementById('btn-reload-assign')?.addEventListener('click', () => {
+        reloadAssign();
+      });
+
+      document.querySelectorAll('.assign-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const tab = btn.getAttribute('data-tab');
+          if (tab) switchAssignTab(tab);
+        });
+      });
+
+      document.getElementById('assign-flt-q')?.addEventListener('input', () => {
+        ASSIGN_FILTERED = applyAssignFilters(ALL_ASSIGN_ITEMS, ASSIGN_CURRENT_TAB);
+        ASSIGN_CURRENT_PAGE = 1;
+        updateAssignCounts();
+        renderAssignTable();
+      });
+
+      document.getElementById('assign-flt-from')?.addEventListener('change', () => {
+        ASSIGN_FILTERED = applyAssignFilters(ALL_ASSIGN_ITEMS, ASSIGN_CURRENT_TAB);
+        ASSIGN_CURRENT_PAGE = 1;
+        updateAssignCounts();
+        renderAssignTable();
+      });
+
+      document.getElementById('assign-flt-to')?.addEventListener('change', () => {
+        ASSIGN_FILTERED = applyAssignFilters(ALL_ASSIGN_ITEMS, ASSIGN_CURRENT_TAB);
+        ASSIGN_CURRENT_PAGE = 1;
+        updateAssignCounts();
+        renderAssignTable();
+      });
+
+      document.getElementById('assign-page-size')?.addEventListener('change', (e) => {
+        ASSIGN_PAGE_SIZE = Number(e.target.value || 20) || 20;
+        ASSIGN_CURRENT_PAGE = 1;
+        renderAssignTable();
+      });
+
+      document.getElementById('assign-prev')?.addEventListener('click', () => {
+        if (ASSIGN_CURRENT_PAGE > 1) {
+          ASSIGN_CURRENT_PAGE--;
+          renderAssignTable();
+        }
+      });
+
+      document.getElementById('assign-next')?.addEventListener('click', () => {
+        const pages = Math.max(1, Math.ceil(ASSIGN_FILTERED.length / ASSIGN_PAGE_SIZE));
+        if (ASSIGN_CURRENT_PAGE < pages) {
+          ASSIGN_CURRENT_PAGE++;
+          renderAssignTable();
+        }
+      });
+
+      // Event delegation cho bảng phân công
+      const assignBody = document.getElementById('assign-list-body');
+      if (assignBody) {
+        assignBody.addEventListener('click', (e) => {
+          const btn = e.target.closest('button');
+          if (!btn) return;
+          
+          const id = btn.getAttribute('data-id');
+          if (!id) return;
+          
+          if (btn.classList.contains('act-assign') || btn.classList.contains('act-change-assign')) {
+            ASSIGN_CURRENT_ITEM = id;
+            ASSIGN_IS_CHANGE_MODE = btn.classList.contains('act-change-assign');
+            const it = ALL_ASSIGN_ITEMS.find(x => String(x.id) === String(id) || String(x.code) === String(id));
+            if (it) {
+              // Cập nhật modal
+              const titleEl = document.getElementById('assign-modal-title');
+              const currentPersonContainer = document.getElementById('assign-current-person-container');
+              const currentPersonEl = document.getElementById('assign-current-person');
+              const personSelect = document.getElementById('assign-person');
+              const noteEl = document.getElementById('assign-note');
+              const btnDo = document.getElementById('assign-do');
+              
+              document.getElementById('assign-task-code').value = it.code || '';
+              document.getElementById('assign-task-title').value = it.title || '';
+              
+              if (ASSIGN_IS_CHANGE_MODE) {
+                // Chế độ thay đổi
+                if (titleEl) titleEl.textContent = 'Thay đổi người thực hiện';
+                if (currentPersonContainer) currentPersonContainer.style.display = 'block';
+                if (currentPersonEl) currentPersonEl.value = it.assignee || 'Chưa có';
+                if (personSelect) personSelect.value = it.assignee || '';
+                if (noteEl) noteEl.value = it.note || '';
+                if (btnDo) btnDo.textContent = 'Xác nhận thay đổi';
+              } else {
+                // Chế độ phân công mới
+                if (titleEl) titleEl.textContent = 'Phân công tác vụ';
+                if (currentPersonContainer) currentPersonContainer.style.display = 'none';
+                if (personSelect) personSelect.value = '';
+                if (noteEl) noteEl.value = '';
+                if (btnDo) btnDo.textContent = 'Xác nhận phân công';
+              }
+              
+              populateAssignPersonSelect();
+              // Đặt lại giá trị người thực hiện sau khi populate nếu là chế độ thay đổi
+              if (ASSIGN_IS_CHANGE_MODE && personSelect && it.assignee) {
+                personSelect.value = it.assignee;
+              }
+              
+              openModal('modal-assign');
+            }
+          } else if (btn.classList.contains('act-view-detail')) {
+            // Có thể mở modal chi tiết hoặc xem thông tin
+            const it = ALL_ASSIGN_ITEMS.find(x => String(x.id) === String(id) || String(x.code) === String(id));
+            if (it) {
+              let detail = `Mã: ${it.code}\nTên: ${it.title}\nNgười yêu cầu: ${it.requester}\nNgày yêu cầu: ${fmtDmy(it.requestDate)}\nHạn mong muốn: ${fmtDmy(it.wishDate)}\nNgười thực hiện: ${it.assignee || 'Chưa có'}\nTrạng thái: ${it.status || ''}`;
+              if (it.note) detail += `\nGhi chú: ${it.note}`;
+              alert(detail);
+            }
+          }
+        });
+      }
+
+      document.getElementById('assign-do')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        doAssign();
+      });
+
+      populateAssignPersonSelect();
+
+      // Set default date range for assign
+      try{
+        const assignFrom = document.getElementById('assign-flt-from');
+        const assignTo = document.getElementById('assign-flt-to');
+        if (assignFrom && assignTo) {
+          const now = new Date();
+          const start = new Date(now.getFullYear(), now.getMonth(), 1);
+          const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          const toISO = (x) => `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;
+          assignFrom.value = toISO(start);
+          assignTo.value = toISO(end);
+        }
+      }catch(_){}
 
       (function enforceSecretLock(){
         try{
           const input = document.getElementById('secret-code');
           const disableAll = (disabled)=>{
             document.querySelectorAll('button, input, select, textarea, a').forEach(el=>{
-              if (el===input || el.id==='btn-debug') return;
+              if (el===input) return;
               if (disabled){ el.setAttribute('disabled','true'); el.classList.add('opacity-60','pointer-events-none'); }
               else { el.removeAttribute('disabled'); el.classList.remove('opacity-60','pointer-events-none'); }
             });
@@ -922,8 +2053,8 @@
           toggle.type = 'button';
           toggle.textContent = 'Hiện';
           toggle.className = 'px-2 py-0.5 rounded border border-gray-300 bg-white hover:bg-gray-50';
-          const headerRight = document.getElementById('btn-debug')?.parentElement;
-          if (secCode && headerRight){ headerRight.insertBefore(toggle, document.getElementById('btn-debug')); }
+          const headerRight = secCode?.parentElement;
+          if (secCode && headerRight){ headerRight.insertBefore(toggle, secCode.nextSibling); }
           toggle?.addEventListener('click', ()=>{
             if (!secCode) return;
             const cur = secCode.getAttribute('type');
@@ -931,32 +2062,6 @@
             toggle.textContent = cur==='password'?'Ẩn':'Hiện';
           });
         }catch(_){ }
-      document.getElementById('dbg-load-json')?.addEventListener('click', (e)=>{
-        e.preventDefault();
-        try{
-          const t = document.getElementById('dbg-raw'); if(!t) return;
-          const txt = t.value||''; if(!txt.trim()){ showToast('Không có JSON để nạp.','error'); return; }
-          let j=null; try{ j=JSON.parse(txt); }catch(_){ showToast('JSON không hợp lệ.','error'); return; }
-          const rows = Array.isArray(j)? j: (Array.isArray(j?.data)? j.data: []);
-          if (!rows.length){ showToast('JSON không có mảng dữ liệu.','error'); return; }
-          ALL_ITEMS = rows.map(x=>({
-            id: x['ID']||x['id']||x['Mã báo cáo']||'',
-            code: x['Mã báo cáo']||x['code']||x['ID']||'',
-            title: x['Tiêu đề']||x['title']||'',
-            reporter: x['Người lập']||x['reporter']||'',
-            reporterEmail: x['Email']||x['reporterEmail']||'',
-            submitDate: x['Ngày nộp']||x['submitDate']||'',
-            wishDate: x['Hạn mong muốn']||x['wishDate']||'',
-            dueDate: x['Hạn đánh giá']||x['dueDate']||'',
-            status: (function(){ const s=String(x['Trạng thái']||x['status']||''); return s.includes('Chờ phê duyệt 1')?'Pending1': s.includes('Chờ phê duyệt 2')?'Pending2': s.includes('Done')?'Approved': s; })(),
-            conclusion: x['Kết luận']||x['conclusion']||'',
-            reportUrl: x['Liên kết báo cáo']||x['reportUrl']||''
-          }));
-          FILTERED = applyFilters(ALL_ITEMS);
-          CURRENT_PAGE=1; renderTable();
-          showToast('Đã nạp JSON thủ công.','success');
-        }catch(_){ showToast('Nạp JSON thất bại.','error'); }
-      });
       document.getElementById('btn-reset')?.addEventListener('click', async (e)=>{
         e.preventDefault(); 
         ['flt-q','flt-status','flt-from','flt-to'].forEach(id=>{ const el=document.getElementById(id); if(!el) return; if (el.tagName==='SELECT') el.selectedIndex=0; else el.value=''; }); 
@@ -1003,6 +2108,12 @@
         FILTERED = applyFilters(ALL_ITEMS);
         CURRENT_PAGE = 1;
         renderTable();
+        
+        // Cập nhật thống kê nếu đang ở tab thống kê
+        const statsSection = document.getElementById('form-statistics');
+        if (statsSection && statsSection.style.display !== 'none') {
+          loadStatistics();
+        }
       }catch(err){
         showToast('Lỗi tải dữ liệu.','error');
       }finally{ if(btn){ btn.disabled=false; btn.textContent = prev||'Tra cứu'; } }
